@@ -33,6 +33,10 @@ export default function Page() {
 
   const [accepted, setAccepted] = useState(false);
   const [noPos, setNoPos] = useState<{ x: number; y: number } | null>(null);
+
+  // NEW: lock so "No" only dodges once per approach
+  const [isDodging, setIsDodging] = useState(false);
+
   const [hearts, setHearts] = useState<Heart[]>([]);
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
 
@@ -63,7 +67,6 @@ export default function Page() {
       setNoPos({ x, y });
     };
 
-    // Run after first paint + when resizing
     const t = window.setTimeout(placeInitial, 0);
     window.addEventListener("resize", placeInitial);
     return () => {
@@ -72,7 +75,7 @@ export default function Page() {
     };
   }, []);
 
-  // Make the "No" button dodge only when pointer is close
+  // Make the "No" button dodge only when pointer is close — but ONLY ONCE per approach
   useEffect(() => {
     if (accepted) return;
     if (!wrapRef.current || !noBtnRef.current) return;
@@ -85,50 +88,53 @@ export default function Page() {
     const btnCenterX = btnRect.left + btnRect.width / 2;
     const btnCenterY = btnRect.top + btnRect.height / 2;
 
-    // How close before it dodges (tune this)
     const dangerRadius = Math.max(90, Math.min(150, btnRect.width * 1.2));
-
     const d = distance(pointer.x, pointer.y, btnCenterX, btnCenterY);
-    if (d > dangerRadius) return;
 
-    // Calculate new position away from pointer
-    const awayX = btnCenterX - pointer.x;
-    const awayY = btnCenterY - pointer.y;
-    const len = Math.max(1, Math.hypot(awayX, awayY));
-    const nx = awayX / len;
-    const ny = awayY / len;
-
-    // Scoot amount
-    const scoot = 140;
-
-    // Current pos is wrap-relative; convert center movement into wrap-relative offset
-    const currentX = noPos.x;
-    const currentY = noPos.y;
-
-    // Propose new top-left position
-    let proposedX = currentX + nx * scoot;
-    let proposedY = currentY + ny * scoot;
-
-    // Keep within wrapper bounds
-    const maxX = wrap.width - btnRect.width;
-    const maxY = wrap.height - btnRect.height;
-
-    // Add a little randomness so it feels playful
-    proposedX += (Math.random() - 0.5) * 60;
-    proposedY += (Math.random() - 0.5) * 60;
-
-    proposedX = clamp(proposedX, 0, maxX);
-    proposedY = clamp(proposedY, 0, maxY);
-
-    // If it didn't move much (stuck in corner), try a random spot
-    const moved = Math.hypot(proposedX - currentX, proposedY - currentY);
-    if (moved < 40) {
-      proposedX = Math.random() * maxX;
-      proposedY = Math.random() * maxY;
+    // If the cursor is far away, re-arm the dodge
+    if (d > dangerRadius + 50) {
+      if (isDodging) setIsDodging(false);
+      return;
     }
 
-    setNoPos({ x: proposedX, y: proposedY });
-  }, [pointer, noPos, accepted]);
+    // If already dodged for this approach, don't keep running
+    if (isDodging) return;
+
+    // Only dodge when inside the danger zone
+    if (d <= dangerRadius) {
+      setIsDodging(true);
+
+      const awayX = btnCenterX - pointer.x;
+      const awayY = btnCenterY - pointer.y;
+      const len = Math.max(1, Math.hypot(awayX, awayY));
+      const nx = awayX / len;
+      const ny = awayY / len;
+
+      const scoot = 140;
+
+      let proposedX = noPos.x + nx * scoot;
+      let proposedY = noPos.y + ny * scoot;
+
+      const maxX = wrap.width - btnRect.width;
+      const maxY = wrap.height - btnRect.height;
+
+      // Add a little randomness so it feels playful
+      proposedX += (Math.random() - 0.5) * 60;
+      proposedY += (Math.random() - 0.5) * 60;
+
+      proposedX = clamp(proposedX, 0, maxX);
+      proposedY = clamp(proposedY, 0, maxY);
+
+      // If it didn't move much (stuck in corner), try a random spot
+      const moved = Math.hypot(proposedX - noPos.x, proposedY - noPos.y);
+      if (moved < 40) {
+        proposedX = Math.random() * maxX;
+        proposedY = Math.random() * maxY;
+      }
+
+      setNoPos({ x: proposedX, y: proposedY });
+    }
+  }, [pointer, noPos, accepted, isDodging]);
 
   // Mobile: dodge on touchstart if finger is near the "No" button
   const onNoTouchStart: React.TouchEventHandler<HTMLButtonElement> = (e) => {
@@ -150,7 +156,8 @@ export default function Page() {
     e.preventDefault();
     e.stopPropagation();
 
-    // Move it by faking a pointer position
+    // Re-arm dodge for touch attempt, then set pointer close to trigger one dodge
+    setIsDodging(false);
     setPointer({ x: touch.clientX, y: touch.clientY });
   };
 
@@ -222,23 +229,18 @@ export default function Page() {
         </p>
 
         <div className="actionsArea">
-          <button
-            className="btn yes"
-            onClick={onYes}
-            disabled={accepted}
-            aria-label="Yes"
-          >
+          <button className="btn yes" onClick={onYes} disabled={accepted} aria-label="Yes">
             Yes 💖
           </button>
 
-          {/* The "No" button is positioned absolutely so it can scoot */}
           <button
             ref={noBtnRef}
             className="btn no"
             onClick={(e) => {
-              // If someone somehow clicks it (rare), just scoot anyway
+              // If someone somehow clicks it, just scoot once
               e.preventDefault();
               e.stopPropagation();
+              setIsDodging(false);
               setPointer((p) => p ?? { x: window.innerWidth / 2, y: window.innerHeight / 2 });
             }}
             onTouchStart={onNoTouchStart}
@@ -256,7 +258,6 @@ export default function Page() {
         </div>
 
         <div className={`message ${accepted ? "show" : ""}`}>
-          {/* Must match EXACT text */}
           Best decision ever. I love you ❤️
         </div>
 
@@ -273,7 +274,12 @@ export default function Page() {
           display: grid;
           place-items: center;
           padding: 18px;
-          background: radial-gradient(1200px 800px at 50% 10%, #ffe7f2 0%, #fff 40%, #fff 100%);
+          background: radial-gradient(
+            1200px 800px at 50% 10%,
+            #ffe7f2 0%,
+            #fff 40%,
+            #fff 100%
+          );
           overflow: hidden;
           position: relative;
         }
@@ -291,8 +297,13 @@ export default function Page() {
         }
 
         @keyframes floaty {
-          0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-          50% { transform: translate3d(0, -10px, 0) scale(1.03); }
+          0%,
+          100% {
+            transform: translate3d(0, 0, 0) scale(1);
+          }
+          50% {
+            transform: translate3d(0, -10px, 0) scale(1.03);
+          }
         }
 
         .card {
@@ -304,8 +315,6 @@ export default function Page() {
           padding: 22px 18px;
           backdrop-filter: blur(10px);
           position: relative;
-
-          /* Make space for the dodging button to move around */
           height: min(520px, 72vh);
           overflow: hidden;
         }
@@ -342,7 +351,7 @@ export default function Page() {
         .actionsArea {
           position: relative;
           margin-top: 18px;
-          height: 250px; /* playground area for the "No" button */
+          height: 250px;
           border-radius: 18px;
           background: linear-gradient(180deg, rgba(255, 218, 236, 0.55), rgba(255, 255, 255, 0.35));
           border: 1px dashed rgba(255, 120, 170, 0.35);
@@ -398,13 +407,7 @@ export default function Page() {
           color: #8b2a58;
           border: 1px solid rgba(255, 77, 157, 0.35);
           box-shadow: 0 10px 24px rgba(255, 120, 170, 0.15);
-
-          /* Smooth scooting */
-          transition: transform 240ms cubic-bezier(0.2, 0.9, 0.2, 1);
-        }
-
-        .no:hover {
-          transform: translate3d(var(--x, 0), var(--y, 0), 0) scale(1.02);
+          transition: transform 380ms cubic-bezier(0.2, 0.9, 0.2, 1);
         }
 
         .message {
@@ -433,7 +436,6 @@ export default function Page() {
           font-size: 13px;
         }
 
-        /* Hearts overlay */
         .heartsLayer {
           position: fixed;
           inset: 0;
@@ -464,7 +466,6 @@ export default function Page() {
           }
         }
 
-        /* Small screen tweaks */
         @media (max-width: 420px) {
           .actionsArea {
             height: 270px;
