@@ -28,6 +28,21 @@ function uid() {
 }
 
 export default function Page() {
+  // === Customize these ===
+  const questionText = "Will you be my Valentine? 💌";
+  const subtitleText =
+    "I promise snacks, good vibes, and a lot of “I’m proud of you” energy 🥺🌷";
+
+  // Must match EXACT text requirement? If you still want that exact line, keep it unchanged.
+  const yesMessageExact = "Best decision ever. I love you ❤️";
+
+  // Your ending line under the photo (change this freely)
+  const endingLine = "Now come here 😚💗";
+
+  // Your face image path (put image in /public/me.jpg)
+  const faceSrc = "/me.jpg";
+  // =======================
+
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const noBtnRef = useRef<HTMLButtonElement | null>(null);
 
@@ -237,13 +252,11 @@ export default function Page() {
       <main className="card" ref={wrapRef}>
         <div className="title">
           <span className="sparkle">✨</span>
-          <h1>Will you be my Valentine? 💌</h1>
+          <h1>{questionText}</h1>
           <span className="sparkle">✨</span>
         </div>
 
-        <p className="subtitle">
-          I promise snacks, good vibes, and a lot of “I’m proud of you” energy 🥺🌷
-        </p>
+        <p className="subtitle">{subtitleText}</p>
 
         <div className="actionsArea">
           <button className="btn yes" onClick={onYes} disabled={accepted} aria-label="Yes">
@@ -276,9 +289,15 @@ export default function Page() {
           </button>
         </div>
 
-        <div className={`message ${accepted ? "show" : ""}`}>
-          Best decision ever. I love you ❤️
-        </div>
+        <div className={`message ${accepted ? "show" : ""}`}>{yesMessageExact}</div>
+
+        {/* NEW: show your face at the end */}
+        {accepted && (
+          <div className="final">
+            <img className="face" src={faceSrc} alt="My face" />
+            <div className="finalText">{endingLine}</div>
+          </div>
+        )}
 
         <div className="footer">
           <span>💞</span>
@@ -293,12 +312,7 @@ export default function Page() {
           display: grid;
           place-items: center;
           padding: 18px;
-          background: radial-gradient(
-            1200px 800px at 50% 10%,
-            #ffe7f2 0%,
-            #fff 40%,
-            #fff 100%
-          );
+          background: radial-gradient(1200px 800px at 50% 10%, #ffe7f2 0%, #fff 40%, #fff 100%);
           overflow: hidden;
           position: relative;
         }
@@ -334,7 +348,7 @@ export default function Page() {
           padding: 22px 18px;
           backdrop-filter: blur(10px);
           position: relative;
-          height: min(520px, 72vh);
+          height: min(560px, 78vh);
           overflow: hidden;
         }
 
@@ -499,6 +513,41 @@ export default function Page() {
         .message.show {
           opacity: 1;
           transform: translateY(0);
+        }
+
+        /* NEW: ending face section */
+        .final {
+          margin-top: 14px;
+          display: grid;
+          gap: 10px;
+          place-items: center;
+          animation: finalPop 380ms ease-out;
+        }
+
+        @keyframes finalPop {
+          from {
+            opacity: 0;
+            transform: translateY(10px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        .face {
+          width: min(220px, 70%);
+          aspect-ratio: 1 / 1;
+          object-fit: cover;
+          border-radius: 22px;
+          border: 2px solid rgba(255, 77, 157, 0.35);
+          box-shadow: 0 18px 40px rgba(255, 82, 140, 0.18);
+          background: rgba(255, 255, 255, 0.7);
+        }
+
+        .finalText {
+          font-weight: 800;
+          color: #8b2a58;
         }
 
         .footer {
