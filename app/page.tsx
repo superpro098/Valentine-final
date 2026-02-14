@@ -28,23 +28,22 @@ function uid() {
 }
 
 export default function Page() {
-  // === Customize these ===
-  const questionText = "Will you be my Valentine? 💌";
-  const subtitleText =
+  // ====== Customize ======
+  const QUESTION_TEXT = "Will you be my Valentine? 💌";
+  const SUBTITLE_TEXT =
     "I promise snacks, good vibes, and a lot of “I’m proud of you” energy 🥺🌷";
 
-  // Must match EXACT text requirement? If you still want that exact line, keep it unchanged.
-  const yesMessageExact = "Best decision ever. I love you ❤️";
+  // Must match EXACT message per your requirement:
+  const YES_MESSAGE = "Best decision ever. I love you ❤️";
 
-  // Your ending line under the photo (change this freely)
-  const endingLine = "Now come here 😚💗";
-
-  // Your face image path (put image in /public/me.jpg)
-  const faceSrc = "/me.jpg";
+  // Your face image (make sure you uploaded it to /public/me.jpg)
+  const FACE_SRC = "/me.jpg";
+  const FACE_CAPTION = "Okay fine… you win 😚💗";
   // =======================
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const noBtnRef = useRef<HTMLButtonElement | null>(null);
+  const yesBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const [accepted, setAccepted] = useState(false);
   const [noPos, setNoPos] = useState<{ x: number; y: number } | null>(null);
@@ -75,6 +74,7 @@ export default function Page() {
   }, []);
 
   // Place the "No" button near its normal position once we know layout
+  // We place it in the actionsArea, near the right side.
   useEffect(() => {
     if (!wrapRef.current || !noBtnRef.current) return;
 
@@ -84,7 +84,7 @@ export default function Page() {
       const w = wrap.getBoundingClientRect();
       const b = noBtn.getBoundingClientRect();
 
-      // Put it roughly where it already is, but converted to wrap-relative coords
+      // Convert current absolute position to wrap-relative coords
       const x = b.left - w.left;
       const y = b.top - w.top;
       setNoPos({ x, y });
@@ -119,16 +119,17 @@ export default function Page() {
     const btnCenterX = btnRect.left + btnRect.width / 2;
     const btnCenterY = btnRect.top + btnRect.height / 2;
 
+    // How close before it dodges
     const dangerRadius = Math.max(90, Math.min(150, btnRect.width * 1.2));
     const d = distance(pointer.x, pointer.y, btnCenterX, btnCenterY);
 
-    // If the cursor is far away, re-arm the dodge
-    if (d > dangerRadius + 50) {
+    // If far away, re-arm dodge (so next approach can dodge again)
+    if (d > dangerRadius + 60) {
       if (isDodging) setIsDodging(false);
       return;
     }
 
-    // If already dodged for this approach, don't keep running
+    // Already dodged for this approach => do nothing
     if (isDodging) return;
 
     // Only dodge when inside the danger zone
@@ -141,24 +142,25 @@ export default function Page() {
       const nx = awayX / len;
       const ny = awayY / len;
 
-      const scoot = 140;
+      const scoot = 150;
 
       let proposedX = noPos.x + nx * scoot;
       let proposedY = noPos.y + ny * scoot;
 
+      // Keep within wrapper bounds
       const maxX = wrap.width - btnRect.width;
       const maxY = wrap.height - btnRect.height;
 
-      // Add a little randomness so it feels playful
-      proposedX += (Math.random() - 0.5) * 60;
-      proposedY += (Math.random() - 0.5) * 60;
+      // Add small randomness
+      proposedX += (Math.random() - 0.5) * 70;
+      proposedY += (Math.random() - 0.5) * 70;
 
       proposedX = clamp(proposedX, 0, maxX);
       proposedY = clamp(proposedY, 0, maxY);
 
-      // If it didn't move much (stuck in corner), try a random spot
+      // If it barely moved (corner trap), jump somewhere random
       const moved = Math.hypot(proposedX - noPos.x, proposedY - noPos.y);
-      if (moved < 40) {
+      if (moved < 45) {
         proposedX = Math.random() * maxX;
         proposedY = Math.random() * maxY;
       }
@@ -184,11 +186,11 @@ export default function Page() {
     const d = distance(touch.clientX, touch.clientY, btnCenterX, btnCenterY);
     if (d > dangerRadius) return;
 
-    // Prevent accidental click
+    // Prevent click
     e.preventDefault();
     e.stopPropagation();
 
-    // Re-arm dodge for touch attempt, then set pointer close to trigger one dodge
+    // Re-arm then force a dodge by setting pointer near it
     setIsDodging(false);
     setPointer({ x: touch.clientX, y: touch.clientY });
   };
@@ -197,16 +199,16 @@ export default function Page() {
     const w = window.innerWidth;
     const h = window.innerHeight;
 
-    const count = 70; // "a lot of hearts"
+    const count = 80;
     const newHearts: Heart[] = Array.from({ length: count }).map((_, i) => {
-      const size = 14 + Math.random() * 24;
+      const size = 14 + Math.random() * 26;
       return {
         id: uid() + "-" + i,
         x: Math.random() * w,
-        y: h - 80 - Math.random() * 60,
+        y: h - 70 - Math.random() * 80,
         size,
-        drift: (Math.random() - 0.5) * 180,
-        duration: 1200 + Math.random() * 1400,
+        drift: (Math.random() - 0.5) * 220,
+        duration: 1200 + Math.random() * 1500,
         delay: Math.random() * 250,
         emoji: heartEmojis[Math.floor(Math.random() * heartEmojis.length)],
       };
@@ -214,15 +216,19 @@ export default function Page() {
 
     setHearts((prev) => [...prev, ...newHearts]);
 
-    // Cleanup after animation finishes
     window.setTimeout(() => {
       setHearts((prev) => prev.slice(newHearts.length));
-    }, 3200);
+    }, 3500);
   };
 
   const onYes = () => {
     setAccepted(true);
     popHearts();
+
+    // optional: keep focus on yes, but not required
+    window.setTimeout(() => {
+      yesBtnRef.current?.blur();
+    }, 0);
   };
 
   return (
@@ -252,14 +258,20 @@ export default function Page() {
       <main className="card" ref={wrapRef}>
         <div className="title">
           <span className="sparkle">✨</span>
-          <h1>{questionText}</h1>
+          <h1>{QUESTION_TEXT}</h1>
           <span className="sparkle">✨</span>
         </div>
 
-        <p className="subtitle">{subtitleText}</p>
+        <p className="subtitle">{SUBTITLE_TEXT}</p>
 
         <div className="actionsArea">
-          <button className="btn yes" onClick={onYes} disabled={accepted} aria-label="Yes">
+          <button
+            ref={yesBtnRef}
+            className="btn yes"
+            onClick={onYes}
+            disabled={accepted}
+            aria-label="Yes"
+          >
             Yes 💖
           </button>
 
@@ -267,7 +279,7 @@ export default function Page() {
             ref={noBtnRef}
             className={`btn no ${noWiggle ? "wiggle" : ""}`}
             onClick={(e) => {
-              // If someone somehow clicks it, just scoot once
+              // If someone clicks it, just scoot once
               e.preventDefault();
               e.stopPropagation();
               setIsDodging(false);
@@ -289,13 +301,13 @@ export default function Page() {
           </button>
         </div>
 
-        <div className={`message ${accepted ? "show" : ""}`}>{yesMessageExact}</div>
+        <div className={`message ${accepted ? "show" : ""}`}>{YES_MESSAGE}</div>
 
-        {/* NEW: show your face at the end */}
+        {/* Your face appears after "Yes" */}
         {accepted && (
           <div className="final">
-            <img className="face" src={faceSrc} alt="My face" />
-            <div className="finalText">{endingLine}</div>
+            <img className="face" src={FACE_SRC} alt="Me" />
+            <div className="finalText">{FACE_CAPTION}</div>
           </div>
         )}
 
@@ -348,7 +360,7 @@ export default function Page() {
           padding: 22px 18px;
           backdrop-filter: blur(10px);
           position: relative;
-          height: min(560px, 78vh);
+          height: min(620px, 82vh);
           overflow: hidden;
         }
 
@@ -400,7 +412,7 @@ export default function Page() {
           border-radius: 999px;
           padding: 12px 16px;
           font-size: 16px;
-          font-weight: 700;
+          font-weight: 800;
           cursor: pointer;
           transition: transform 220ms ease, box-shadow 220ms ease, filter 220ms ease, opacity 220ms ease;
           touch-action: manipulation;
@@ -415,7 +427,7 @@ export default function Page() {
 
         .yes {
           position: relative;
-          z-index: 2;
+          z-index: 3;
           background: linear-gradient(180deg, #ff4d9d, #ff2f76);
           color: white;
           box-shadow: 0 12px 26px rgba(255, 58, 124, 0.25);
@@ -435,7 +447,7 @@ export default function Page() {
           position: absolute;
           left: 0;
           top: 0;
-          z-index: 1;
+          z-index: 2;
           background: rgba(255, 255, 255, 0.9);
           color: #8b2a58;
           border: 1px solid rgba(255, 77, 157, 0.35);
@@ -480,7 +492,7 @@ export default function Page() {
           box-shadow: 0 10px 22px rgba(255, 120, 170, 0.18);
           color: #8b2a58;
           font-size: 12px;
-          font-weight: 800;
+          font-weight: 900;
           padding: 6px 10px;
           border-radius: 999px;
           white-space: nowrap;
@@ -503,7 +515,7 @@ export default function Page() {
           margin-top: 18px;
           text-align: center;
           font-size: 18px;
-          font-weight: 800;
+          font-weight: 900;
           color: #b3125a;
           opacity: 0;
           transform: translateY(8px);
@@ -515,13 +527,12 @@ export default function Page() {
           transform: translateY(0);
         }
 
-        /* NEW: ending face section */
         .final {
           margin-top: 14px;
           display: grid;
           gap: 10px;
           place-items: center;
-          animation: finalPop 380ms ease-out;
+          animation: finalPop 420ms ease-out;
         }
 
         @keyframes finalPop {
@@ -536,18 +547,20 @@ export default function Page() {
         }
 
         .face {
-          width: min(220px, 70%);
-          aspect-ratio: 1 / 1;
+          width: 140px;
+          height: 140px;
           object-fit: cover;
-          border-radius: 22px;
-          border: 2px solid rgba(255, 77, 157, 0.35);
-          box-shadow: 0 18px 40px rgba(255, 82, 140, 0.18);
+          border-radius: 50%;
+          border: 4px solid rgba(255, 77, 157, 0.6);
+          box-shadow: 0 14px 34px rgba(255, 82, 140, 0.22);
           background: rgba(255, 255, 255, 0.7);
         }
 
         .finalText {
+          font-size: 16px;
           font-weight: 800;
           color: #8b2a58;
+          text-align: center;
         }
 
         .footer {
@@ -586,7 +599,7 @@ export default function Page() {
             opacity: 1;
           }
           100% {
-            transform: translate3d(var(--drift), -520px, 0) scale(1.2);
+            transform: translate3d(var(--drift), -540px, 0) scale(1.2);
             opacity: 0;
           }
         }
@@ -598,6 +611,10 @@ export default function Page() {
           .btn {
             font-size: 15px;
             padding: 12px 14px;
+          }
+          .face {
+            width: 130px;
+            height: 130px;
           }
         }
       `}</style>
