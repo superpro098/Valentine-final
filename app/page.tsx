@@ -34,13 +34,21 @@ export default function Page() {
   const [accepted, setAccepted] = useState(false);
   const [noPos, setNoPos] = useState<{ x: number; y: number } | null>(null);
 
-  // NEW: lock so "No" only dodges once per approach
+  // lock so "No" only dodges once per approach
   const [isDodging, setIsDodging] = useState(false);
+
+  // fun extras
+  const [noWiggle, setNoWiggle] = useState(false);
+  const [noTip, setNoTip] = useState<string | null>(null);
 
   const [hearts, setHearts] = useState<Heart[]>([]);
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
 
   const heartEmojis = useMemo(() => ["💖", "💗", "💘", "💝", "💕", "❤️", "🩷"], []);
+  const noTips = useMemo(
+    () => ["hehe nope 💅", "nice try 😼", "not today 😇", "allergic to taps 🤧", "scooooot 🏃‍♀️💨"],
+    []
+  );
 
   // Track pointer/mouse for proximity behavior
   useEffect(() => {
@@ -74,6 +82,14 @@ export default function Page() {
       window.removeEventListener("resize", placeInitial);
     };
   }, []);
+
+  const triggerNoFun = () => {
+    setNoTip(noTips[Math.floor(Math.random() * noTips.length)]);
+    setNoWiggle(true);
+
+    window.setTimeout(() => setNoWiggle(false), 420);
+    window.setTimeout(() => setNoTip(null), 900);
+  };
 
   // Make the "No" button dodge only when pointer is close — but ONLY ONCE per approach
   useEffect(() => {
@@ -133,8 +149,9 @@ export default function Page() {
       }
 
       setNoPos({ x: proposedX, y: proposedY });
+      triggerNoFun();
     }
-  }, [pointer, noPos, accepted, isDodging]);
+  }, [pointer, noPos, accepted, isDodging, noTips]);
 
   // Mobile: dodge on touchstart if finger is near the "No" button
   const onNoTouchStart: React.TouchEventHandler<HTMLButtonElement> = (e) => {
@@ -235,12 +252,13 @@ export default function Page() {
 
           <button
             ref={noBtnRef}
-            className="btn no"
+            className={`btn no ${noWiggle ? "wiggle" : ""}`}
             onClick={(e) => {
               // If someone somehow clicks it, just scoot once
               e.preventDefault();
               e.stopPropagation();
               setIsDodging(false);
+              triggerNoFun();
               setPointer((p) => p ?? { x: window.innerWidth / 2, y: window.innerHeight / 2 });
             }}
             onTouchStart={onNoTouchStart}
@@ -254,6 +272,7 @@ export default function Page() {
             aria-label="No"
           >
             No 🙅‍♀️💔
+            {noTip && <span className="noTip">{noTip}</span>}
           </button>
         </div>
 
@@ -408,6 +427,62 @@ export default function Page() {
           border: 1px solid rgba(255, 77, 157, 0.35);
           box-shadow: 0 10px 24px rgba(255, 120, 170, 0.15);
           transition: transform 380ms cubic-bezier(0.2, 0.9, 0.2, 1);
+          transform-origin: center;
+        }
+
+        /* Safe "wiggle": does NOT animate transform (so it won't fight translate3d) */
+        .no.wiggle {
+          animation: wiggle 420ms ease-in-out;
+        }
+
+        @keyframes wiggle {
+          0% {
+            filter: none;
+          }
+          20% {
+            filter: brightness(1.03) drop-shadow(0 12px 20px rgba(255, 90, 150, 0.25));
+          }
+          40% {
+            filter: brightness(1.03) drop-shadow(0 12px 20px rgba(255, 90, 150, 0.25));
+          }
+          60% {
+            filter: brightness(1.015) drop-shadow(0 10px 16px rgba(255, 90, 150, 0.2));
+          }
+          80% {
+            filter: brightness(1.015) drop-shadow(0 10px 16px rgba(255, 90, 150, 0.2));
+          }
+          100% {
+            filter: none;
+          }
+        }
+
+        .noTip {
+          position: absolute;
+          left: 50%;
+          bottom: calc(100% + 10px);
+          transform: translateX(-50%);
+          background: rgba(255, 255, 255, 0.95);
+          border: 1px solid rgba(255, 77, 157, 0.35);
+          box-shadow: 0 10px 22px rgba(255, 120, 170, 0.18);
+          color: #8b2a58;
+          font-size: 12px;
+          font-weight: 800;
+          padding: 6px 10px;
+          border-radius: 999px;
+          white-space: nowrap;
+          pointer-events: none;
+          animation: tipPop 220ms ease-out;
+        }
+
+        @keyframes tipPop {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(6px) scale(0.96);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0) scale(1);
+          }
         }
 
         .message {
@@ -436,6 +511,7 @@ export default function Page() {
           font-size: 13px;
         }
 
+        /* Hearts overlay */
         .heartsLayer {
           position: fixed;
           inset: 0;
