@@ -31,14 +31,14 @@ export default function Page() {
   // ====== Customize ======
   const QUESTION_TEXT = "Will you be my Valentine? 💌";
   const SUBTITLE_TEXT =
-    "I promise snacks, good vibes, and a lot of “I’m proud of you” energy 🥺🌷";
+    "Đố u từ chối toai được 😏";
 
   // Must match EXACT message per your requirement:
-  const YES_MESSAGE = "Best decision ever. I love you ❤️";
+  const YES_MESSAGE = "Oki ❤️";
 
   // Your face image (make sure you uploaded it to /public/me.jpg)
   const FACE_SRC = "/me.jpg";
-  const FACE_CAPTION = "Okay fine… you win 😚💗";
+  const FACE_CAPTION = "Quyết định này 10 điểm không nhưng 🫶 😚💗";
   // =======================
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -60,7 +60,7 @@ export default function Page() {
 
   const heartEmojis = useMemo(() => ["💖", "💗", "💘", "💝", "💕", "❤️", "🩷"], []);
   const noTips = useMemo(
-    () => ["hehe nope 💅", "nice try 😼", "not today 😇", "allergic to taps 🤧", "scooooot 🏃‍♀️💨"],
+    () => ["hehe nope 💅", "nice try 😼", "not today 😇", "allergic to taps 🤧", "còn lâu hê hê 🏃‍♀️💨"],
     []
   );
 
